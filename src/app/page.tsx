@@ -1,7 +1,9 @@
-import React from "react";
+import SecureRoomUI from "./_components/SecureRoomUI";
 
-function Home() {
-  return <div>Home</div>;
+export default function Home() {
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <SecureRoomUI />
+    </div>
+  );
 }
-
-export default Home;
