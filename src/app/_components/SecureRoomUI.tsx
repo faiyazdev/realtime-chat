@@ -1,31 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { generateUsername } from "@/lib/generate-username";
 import { useMutation } from "@tanstack/react-query";
 import app from "@/lib/eden-client";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import useUsername from "@/hooks/use-username";
 
 export default function SecureRoomUI() {
-  const [username, setUsername] = useState<null | string>(null);
-  const STORAGE_KEY = "realtime-chat-username";
   const router = useRouter();
-  useEffect(() => {
-    const storedUsername = localStorage.getItem(STORAGE_KEY);
-    if (storedUsername) {
-      setUsername(storedUsername);
-    } else {
-      const generatedUsername = generateUsername();
-      localStorage.setItem(STORAGE_KEY, generatedUsername);
-      setUsername(generatedUsername);
-    }
-  }, [username]);
+  const { username } = useUsername();
+  const searchParams = useSearchParams();
 
-  const { mutate: createRoom } = useMutation({
+  const wasDestroyed = searchParams.get("destroyed") === "true";
+  const error = searchParams.get("error");
+
+  const { mutate: createRoom, isPending } = useMutation({
     mutationFn: async () => {
       const res = await app.api.room.create.post();
       if (res.status === 200) {
@@ -33,26 +25,53 @@ export default function SecureRoomUI() {
       }
     },
   });
-  return (
-    <Card className="w-full max-w-md">
-      <CardContent className="p-6 space-y-6">
-        <div className="space-y-4">
-          <Label htmlFor="username">Your Identity</Label>
-          <Input
-            id="username"
-            placeholder="Enter your username"
-            value={username || "Loading..."}
-            onChange={(e) => setUsername(e.target.value)}
-          />
-        </div>
 
-        <Button
-          onClick={() => createRoom()}
-          className="w-full bg-white text-black"
-        >
-          Create Secure Room
-        </Button>
-      </CardContent>
-    </Card>
+  return (
+    <div className="flex w-full justify-center px-3 py-6 sm:px-6">
+      <Card className="w-full max-w-md rounded-xl">
+        {/* Alerts */}
+        {wasDestroyed && (
+          <div className="mx-4 mt-4 rounded-lg bg-green-100 p-3 text-sm leading-relaxed text-green-700">
+            <span className="font-medium">Success!</span> The secure room has
+            been destroyed.
+          </div>
+        )}
+
+        {error === "room_not_found" && (
+          <div className="mx-4 mt-4 rounded-lg bg-red-100 p-3 text-sm leading-relaxed text-red-700">
+            <span className="font-medium">Error!</span> The secure room was not
+            found.
+          </div>
+        )}
+
+        {error === "room-full" && (
+          <div className="mx-4 mt-4 rounded-lg bg-red-100 p-3 text-sm leading-relaxed text-red-700">
+            <span className="font-medium">Error!</span> The secure room is full.
+          </div>
+        )}
+
+        <CardContent className="space-y-5 px-4 py-5 sm:px-6 sm:py-6">
+          <div className="space-y-1.5">
+            <Label htmlFor="username" className="text-sm">
+              Your Identity
+            </Label>
+            <Input
+              id="username"
+              value={username}
+              readOnly
+              className="h-11 text-base"
+            />
+          </div>
+
+          <Button
+            onClick={() => createRoom()}
+            disabled={isPending}
+            className="h-11 w-full text-base dark:bg-amber-400"
+          >
+            {isPending ? "Creating..." : "Create Secure Room"}
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
